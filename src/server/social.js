@@ -3,6 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { betterAuth, socialProviders } from 'better-auth'
 import { fromNodeHeaders, toNodeHandler } from 'better-auth/node'
+import { engine, create, ExpressHandlebars } from 'express-handlebars'
 
 // Private stuff
 
@@ -103,6 +104,14 @@ export default (log, loga, argv) => {
   security.isAdmin = () => {}
 
   security.defineRoutes = (app, cors, updateOwner) => {
+    //console.log('*** app', app)
+    // extend views...
+    const hbs = create({
+      extname: '.html',
+      layoutsDir: path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views'),
+      defaultLayout: 'securityDialog',
+    })
+
     const authSpec = {
       baseURL: `${thisWiki.callbackProtocol}//${thisWiki.callbackHost}/auth`,
       socialProviders: {},
@@ -210,11 +219,10 @@ export default (log, loga, argv) => {
         loginText: 'Sign in to',
         schemes: schemeButtons,
       }
-      // console.log('*** loginDialog', info)
-      res.render(
-        path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'securityDialog.html'),
-        info,
-      )
+
+      hbs
+        .render(path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'securityDialog.html'), info)
+        .then(rendered => res.send(rendered))
     })
 
     app.get('/auth/loginDone', async (req, res) => {
@@ -232,8 +240,10 @@ export default (log, loga, argv) => {
         owner: getOwner(),
         authMessage: "You are now logged in. If this window hasn't closed, you can close it.",
       }
-      // console.log('***loginDone', info)
-      res.render(path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'done.html'), info)
+      console.log('***loginDone', info)
+      hbs
+        .render(path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'done.html'), info)
+        .then(rendered => res.send(rendered))
     })
 
     app.get('/logout', async (req, res) => {
