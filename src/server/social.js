@@ -64,11 +64,11 @@ export default (log, loga, argv) => {
   const setOwner = (security.setOwner = (id, cb) => {
     fs.access(thisWiki.idFile, fs.constants.F_OK, err => {
       if (err) {
-        fs.writeFile(idFile, JSON.stringify(id), err => {
+        fs.writeFile(thisWiki.idFile, JSON.stringify(id), err => {
           if (err) return cb(err)
           // console.log(`Claiming wiki ${thisWiki.wikiName} for ${id.name}`)
           thisWiki.owner = id
-          thisWiki.ownerName = owner.name
+          thisWiki.ownerName = id.name
           cb()
         })
       } else {
@@ -244,6 +244,30 @@ export default (log, loga, argv) => {
       hbs
         .render(path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'done.html'), info)
         .then(rendered => res.send(rendered))
+    })
+
+    app.get('/auth/claim-wiki', (req, res) => {
+      if (thisWiki.owner) {
+        console.log('Claim Request Ignored: Wiki already has owner - ', thisWiki.wikiName)
+        res.sendStatus(403)
+      } else {
+        const user = req.user
+        const id = Object.assign(
+          {
+            name: user.name,
+            email: user.email,
+          },
+          user.social,
+        )
+        setOwner(id, err => {
+          if (err) {
+            console.log('Failed to claim wiki ', req.hostname, ' for ', id)
+            res.sendStatus(500)
+          }
+          updateOwner(getOwner())
+          res.json({ ownerName: id.name })
+        })
+      }
     })
 
     app.get('/logout', async (req, res) => {
