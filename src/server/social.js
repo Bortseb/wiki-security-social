@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { betterAuth, socialProviders } from 'better-auth'
 import { fromNodeHeaders, toNodeHandler } from 'better-auth/node'
-import { engine, create, ExpressHandlebars } from 'express-handlebars'
+import { create } from 'express-handlebars'
 
 // Private stuff
 
@@ -165,6 +165,26 @@ export default (log, loga, argv) => {
       }
     }
 
+    // Google
+    if (['google_clientID', 'google_clientSecret'].every(key => key in argv)) {
+      console.log('GOOGLE')
+      authSpec.socialProviders.google = {
+        clientId: argv.google_clientID,
+        clientSecret: argv.google_clientSecret,
+        mapProfileToUser: async profile => {
+          console.log('*** GOOGLE', profile)
+          return {
+            social: {
+              google: {
+                username: profile.name,
+                id: profile.sub,
+              },
+            },
+          }
+        },
+      }
+    }
+
     // add other possible auth providers here.
 
     // configure authenticaiton methods
@@ -177,7 +197,7 @@ export default (log, loga, argv) => {
       })
       // console.log('*** app use', session)
       if (session) {
-        // console.log('*** app.use', session.user)
+        console.log('*** app.use', session.user)
         req.user = session.user
       } else {
         // console.log('*** app.use - no user')
@@ -206,11 +226,18 @@ export default (log, loga, argv) => {
       const cookies = req.cookies
       // console.log('*** loginDialog - cookies', cookies)
       const schemeButtons = []
-
-      // hard code github for now.
-      schemeButtons.push({
-        button: `<a href='#' onclick='signIn("github")' class='scheme-button github-button'><span>Github</span></a>`,
-      })
+      // Github
+      if (authSpec.socialProviders.github) {
+        schemeButtons.push({
+          button: `<a href='#' onclick='signIn("github")' class='scheme-button github-button'><span>Github</span></a>`,
+        })
+      }
+      // Google
+      if (authSpec.socialProviders.google) {
+        schemeButtons.push({
+          button: `<a href='#' onclick='signIn("google")' class='scheme-button github-button'><span>Google</span></a>`,
+        })
+      }
 
       const info = {
         wikiName: cookies['wikiName'],
