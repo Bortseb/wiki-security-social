@@ -36,10 +36,6 @@ export default (log, loga, argv) => {
 
   // called by wiki-server
 
-  security.authenticate_session = () => {
-    // console.log('*** authenticate_session')
-  }
-
   security.retrieveOwner = cb => {
     fs.access(thisWiki.idFile, fs.constants.F_OK, err => {
       if (!err) {
@@ -73,7 +69,7 @@ export default (log, loga, argv) => {
       if (err) {
         fs.writeFile(thisWiki.idFile, JSON.stringify(id), err => {
           if (err) return cb(err)
-          // console.log(`Claiming wiki ${thisWiki.wikiName} for ${id.name}`)
+          console.log(`Claiming wiki ${thisWiki.wikiName} for ${id.name}`)
           thisWiki.owner = id
           thisWiki.ownerName = id.name
           cb()
@@ -91,7 +87,6 @@ export default (log, loga, argv) => {
 
   const isAuthorized = (security.isAuthorized = req => {
     if (thisWiki.owner === '') {
-      console.log('*** isAuth - unclaimed')
       return true
     } else {
       if (req.user) {
@@ -112,10 +107,30 @@ export default (log, loga, argv) => {
     }
   })
 
-  security.isAdmin = () => {}
+  security.isAdmin = req => {
+    if (typeof thisWiki.admin === 'undefined') {
+      return false
+    }
+    try {
+      if (!req.user) {
+        return false
+      }
+    } catch (e) {
+      return false
+    }
+    const idProvider = Object.keys(req.user.social)[0]
+    if (thisWiki.admin[idProvider] === undefined) {
+      console.log('admin not defined for', idProvider)
+      return false
+    }
+    const adminProviders = ['github', 'google', 'twitter', 'oauth2']
+    if (adminProviders.includes(idProvider)) {
+      return thisWiki.admin[idProvider].toString() === req.user.social[idProvider].id.toString()
+    }
+    return false
+  }
 
   security.defineRoutes = (app, cors, updateOwner) => {
-    //console.log('*** app', app)
     // extend views...
     const hbs = create({
       extname: '.html',
@@ -159,7 +174,6 @@ export default (log, loga, argv) => {
 
     // Github
     if (['github_clientID', 'github_clientSecret'].every(key => key in argv)) {
-      // console.log('GITHUB')
       authSpec.socialProviders.github = {
         clientId: argv.github_clientID,
         clientSecret: argv.github_clientSecret,
@@ -178,12 +192,10 @@ export default (log, loga, argv) => {
 
     // Google
     if (['google_clientID', 'google_clientSecret'].every(key => key in argv)) {
-      console.log('GOOGLE')
       authSpec.socialProviders.google = {
         clientId: argv.google_clientID,
         clientSecret: argv.google_clientSecret,
         mapProfileToUser: async profile => {
-          console.log('*** GOOGLE', profile)
           return {
             social: {
               google: {
@@ -199,26 +211,21 @@ export default (log, loga, argv) => {
     // add other possible auth providers here.
 
     // configure authenticaiton methods
-    console.log('authSpec', authSpec)
     auth = betterAuth(authSpec)
 
     app.use(async (req, res, next) => {
       const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
       })
-      // console.log('*** app use', session)
       if (session) {
-        console.log('*** app.use', session.user)
         req.user = session.user
       } else {
-        // console.log('*** app.use - no user')
         req.user = ''
       }
       next()
     })
 
     app.get('/auth/client-settings.json', (req, res) => {
-      console.log('*** client-settings', thisWiki, isAuthorized(req))
       const settings = {
         useHttps: thisWiki.useHttps,
       }
@@ -235,7 +242,6 @@ export default (log, loga, argv) => {
 
     app.get('/auth/loginDialog', (req, res) => {
       const cookies = req.cookies
-      // console.log('*** loginDialog - cookies', cookies)
       const schemeButtons = []
       // Github
       if (authSpec.socialProviders.github) {
@@ -267,10 +273,8 @@ export default (log, loga, argv) => {
       const session = await auth.api.getSession({
         headers: fromNodeHeaders(req.headers),
       })
-      // console.log('*+* BA Session', session)
 
       const cookies = req.cookies
-      // console.log('*** cookies', cookies)
       const info = {
         wikiName: cookies['wikiName'],
         wikiHostName: thisWiki.wikiHost ? `part of ${req.hostname} wiki farm` : 'a federated wiki site',
@@ -278,7 +282,6 @@ export default (log, loga, argv) => {
         owner: getOwner(),
         authMessage: "You are now logged in. If this window hasn't closed, you can close it.",
       }
-      console.log('***loginDone', info)
       hbs
         .render(path.join(path.dirname(url.fileURLToPath(import.meta.url)), '..', 'views', 'done.html'), info)
         .then(rendered => res.send(rendered))
@@ -309,7 +312,6 @@ export default (log, loga, argv) => {
     })
 
     app.get('/logout', async (req, res) => {
-      console.log('Logout...')
       req.session.reset()
       res.send('OK')
     })
