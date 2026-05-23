@@ -4,6 +4,10 @@
   "description": "Social Authentication Security plugin for Federated Wiki.",
   "license": "MIT",
   "author": "Paul Rodwell <paul.rodwell@btinternet.com>",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/fedwiki/wiki-security-social.git"
+  },
   "type": "module",
   "main": "index.js",
   "scripts": {
