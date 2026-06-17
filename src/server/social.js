@@ -124,7 +124,7 @@ export default (log, loga, argv) => {
       console.log('admin not defined for', idProvider)
       return false
     }
-    const adminProviders = ['github', 'google', 'twitter', 'oauth2']
+    const adminProviders = ['github', 'google', 'oauth2']
     if (adminProviders.includes(idProvider)) {
       return thisWiki.admin[idProvider].toString() === req.user.social[idProvider].id.toString()
     }
