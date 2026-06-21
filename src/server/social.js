@@ -228,7 +228,7 @@ export default (log, loga, argv) => {
               mapProfileToUser: async profile => {
                 console.log('oauth2', profile)
                 return {
-                  name: profile[argv.oauth2_DisplayNameField] || profile.display_name,
+                  name: profile[argv.oauth2_DisplayNameField] || profile.preferred_username,
                   social: {
                     oauth2: {
                       id: profile[argv.oauth2_IdField] || profile.sub, // This is the UUID from Keycloak
